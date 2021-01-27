@@ -95,7 +95,7 @@ namespace m3u8_Downloader
         {
             changeStatus(control, STATUS_DOWNLOADING);
             string path = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
-            string folder = "job_" + (new Random(Guid.NewGuid().GetHashCode() + 123)).Next(0, 10000000);
+            string folder = CO_WORKING_FOLDER_NAME + (new Random(Guid.NewGuid().GetHashCode() + 123)).Next(0, 10000000);
             
             if (Directory.Exists(path + @"\" + folder)) Directory.Delete(path + @"\" + folder, true);
             Directory.CreateDirectory(path + @"\" + folder);
