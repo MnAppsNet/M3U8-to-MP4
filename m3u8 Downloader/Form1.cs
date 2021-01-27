@@ -25,6 +25,7 @@ namespace m3u8_Downloader
         const string CO_M3U8_STARTS_WITH = "#EXTM3U";
         const string CO_USER_AGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/74.0.3729.169 Safari/537.36";
 
+
         //Status texts :
         private static string STATUS_DECODING_M3U8 = "Decoding m3u8 file...";
         private static string STATUS_DOWNLOADING = "Downloading video parts...";
@@ -48,7 +49,17 @@ namespace m3u8_Downloader
 
             button_download.Enabled = false;
             status.Text = STATUS_DECODING_M3U8;
-            
+
+            List<string> urls = new List<string>();
+            urls = decodeM3U8(input_link.Text);
+
+            Thread download = new Thread(() => downloadFiles(this,urls));
+            download.Start();
+        }
+
+        private List<string> decodeM3U8(string link)
+        {
+            List<string> urls = new List<string>();
             string path = System.IO.Path.GetDirectoryName(Assembly.GetEntryAssembly().Location);
             byte[] m3u8_bytes = null;
             using (var client = new WebClient())
@@ -56,13 +67,14 @@ namespace m3u8_Downloader
                 try
                 {
                     client.Headers.Add(HttpRequestHeader.UserAgent, CO_USER_AGENT);
-                    m3u8_bytes = client.DownloadData(input_link.Text);
+                    m3u8_bytes = client.DownloadData(link);
                 }
-                catch (Exception eror) {
+                catch (Exception eror)
+                {
                     MessageBox.Show(ERROR_DOWNLOAD_FAILED.Replace("*", eror.Message));
                     button_download.Enabled = true;
-                    changeStatus(this,"");
-                    return;
+                    changeStatus(this, "");
+                    return null;
                 }
             }
             MemoryStream m3u8MemoryStream = new MemoryStream(m3u8_bytes);
@@ -74,21 +86,25 @@ namespace m3u8_Downloader
                 m3u8.Dispose();
                 button_download.Enabled = true;
                 changeStatus(this, "");
-                return;
+                return null;
             }
-            List<string> urls = new List<string>();
-            string baseURL = input_link.Text.Substring(0, input_link.Text.Length - input_link.Text.Split('/').GetValue(input_link.Text.Split('/').Length - 1).ToString().Length );
+            string baseURL = link.Substring(0, link.Length - link.Split('/').GetValue(link.Split('/').Length - 1).ToString().Length);
             string line = "";
             while ((line = m3u8.ReadLine()) != null)
             {
                 if (line.StartsWith("#")) continue;
-                urls.Add(baseURL + line);
+                if (line.ToLower().EndsWith(".m3u8"))
+                {
+                    List<string> tmpUrls = decodeM3U8(baseURL + line);
+                    urls.AddRange(tmpUrls);
+                }
+                else
+                    urls.Add(baseURL + line);
             }
             m3u8.Close();
             m3u8.Dispose();
 
-            Thread download = new Thread(() => downloadFiles(this,urls));
-            download.Start();
+            return urls;
         }
 
         private void downloadFiles(main control, List<string> urls)
